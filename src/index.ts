@@ -1,1 +1,3 @@
-export const hello = "hearth-client";
+export { Hearth } from "./client";
+export * from "./types";
+export * from "./errors";
