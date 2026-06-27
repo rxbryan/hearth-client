@@ -1,8 +1,15 @@
-import type { ClaimResult, InviteResult, InviteOptions } from "./types";
+import type { ClaimResult, InviteResult, InviteOptions, JoinOptions } from "./types";
+import { Room } from "./room";
 import { RoomAlreadyClaimedError, NotOwnerError, HearthRequestError } from "./errors";
+import { Socket } from "phoenix";
 
 export class Hearth {
-  constructor(private readonly baseUrl: string) {}
+  private socket?: Socket | undefined;
+
+  constructor(
+    private readonly baseUrl: string,
+    private readonly socketUrl = baseUrl.replace(/^http/, "ws") + "/socket",
+  ) {}
 
   async claim(room: string): Promise<ClaimResult> {
     const res = await this.post("/api/rooms", { room });
@@ -31,6 +38,11 @@ export class Hearth {
     throw await this.toError(res);
   }
 
+  async join(roomName: string, token: string, opts: JoinOptions = {}): Promise<Room> {
+    const socket = this.ensureSocket();
+    return Room.join(socket, roomName, token, opts);
+  }
+
   private post(path: string, body: unknown): Promise<Response> {
     return fetch(`${this.baseUrl}${path}`, {
       method: "POST",
@@ -45,5 +57,18 @@ export class Hearth {
       .then((b) => b.error ?? "unknown")
       .catch(() => "unknown");
     return new HearthRequestError(res.status, code);
+  }
+
+  private ensureSocket(): Socket {
+    if (!this.socket) {
+      this.socket = new Socket(this.socketUrl);
+      this.socket.connect();
+    }
+    return this.socket;
+  }
+
+  disconnect(): void {
+    this.socket?.disconnect();
+    this.socket = undefined;
   }
 }
