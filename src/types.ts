@@ -12,3 +12,14 @@ export interface InviteResult {
 export interface InviteOptions {
   ttlSeconds?: number;
 }
+
+export interface Message {
+  seq: number;
+  body: string;
+}
+
+export interface JoinOptions {
+  who?: string;
+}
+
+export type Presence = Record<string, { metas: Array<Record<string, unknown>> }>;
