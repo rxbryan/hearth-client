@@ -1,0 +1,10 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+coverage/
+
+# logs
+*.log
+npm-debug.log*
