@@ -22,4 +22,8 @@ export interface JoinOptions {
   who?: string;
 }
 
-export type Presence = Record<string, { metas: Array<Record<string, unknown>> }>;
+export interface PresentUser {
+  id: string;
+  metas: Array<Record<string, unknown>>;
+}
+export type Presence = PresentUser[];

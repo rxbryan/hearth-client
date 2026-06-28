@@ -1,4 +1,4 @@
-import { Socket, Channel } from "phoenix";
+import { Socket, Channel, Presence as PhoenixPresence } from "phoenix";
 import type { Message, Presence, JoinOptions } from "./types";
 import { UnauthorizedError } from "./errors";
 
@@ -10,11 +10,14 @@ export class Room {
   private messageHandlers: MessageHandler[] = [];
   private presenceHandlers: PresenceHandler[] = [];
   public history: Message[] = [];
+  private presence: PhoenixPresence;
 
   private constructor(
     public readonly name: string,
     private readonly channel: Channel,
-  ) {}
+  ) {
+    this.presence = new PhoenixPresence(channel);
+  }
 
   static join(socket: Socket, name: string, token: string, opts: JoinOptions): Promise<Room> {
     const channel = socket.channel(`room:${name}`, {
@@ -36,7 +39,7 @@ export class Room {
   send(body: string): Promise<number> {
     return new Promise((resolve, reject) => {
       this.channel
-        .push("shout", { body })
+        .push("message", { body })
         .receive("ok", (reply: { seq: number }) => resolve(reply.seq))
         .receive("error", reject);
     });
@@ -58,18 +61,14 @@ export class Room {
   }
 
   private wireEvents(): void {
-    this.channel.on("shout", (msg: Message) => this.deliver(msg));
-
+    this.channel.on("message", (msg: Message) => this.deliver(msg));
     this.channel.on("replay", (batch: { messages: Message[] }) => {
-      // missed messages arrive as one batch; unroll through the same path as live
       for (const msg of batch.messages) this.deliver(msg);
     });
 
-    this.channel.on("presence_state", (state: Presence) => {
-      this.presenceHandlers.forEach((h) => h(state));
-    });
-    this.channel.on("presence_diff", (state: Presence) => {
-      this.presenceHandlers.forEach((h) => h(state));
+    this.presence.onSync(() => {
+      const present = this.presence.list((id, { metas }) => ({ id, metas }));
+      this.presenceHandlers.forEach((h) => h(present));
     });
 
     // TODO: reconnect-with-replay. On socket reconnect, re-join with
