@@ -23,7 +23,6 @@ export class Room {
     const channel = socket.channel(`room:${name}`, {
       token,
       who: opts.who,
-      since_seq: 0,
     });
     const room = new Room(name, channel);
     room.wireEvents();
@@ -62,17 +61,18 @@ export class Room {
 
   private wireEvents(): void {
     this.channel.on("message", (msg: Message) => this.deliver(msg));
-    this.channel.on("replay", (batch: { messages: Message[] }) => {
-      for (const msg of batch.messages) this.deliver(msg);
+    // On join the server sends the recent tail + current seq as room_state.
+    this.channel.on("room_state", (state: { messages: Message[]; seq: number }) => {
+      for (const msg of state.messages) this.deliver(msg);
+      // seq is the room's high-water mark; deliver() already advances lastSeq,
+      // but set it explicitly in case the tail was empty.
+      if (state.seq > this.lastSeq) this.lastSeq = state.seq;
     });
 
     this.presence.onSync(() => {
       const present = this.presence.list((id, { metas }) => ({ id, metas }));
       this.presenceHandlers.forEach((h) => h(present));
     });
-
-    // TODO: reconnect-with-replay. On socket reconnect, re-join with
-    // since_seq: this.lastSeq so the server replays the gap.
   }
 
   // single path for both live and replayed messages: order-preserving, deduped

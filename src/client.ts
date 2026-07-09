@@ -1,4 +1,4 @@
-import type { ClaimResult, InviteResult, InviteOptions, JoinOptions } from "./types";
+import type { ClaimResult, InviteResult, InviteOptions, JoinOptions, Message } from "./types";
 import { Room } from "./room";
 import { RoomAlreadyClaimedError, NotOwnerError, HearthRequestError } from "./errors";
 import { Socket } from "phoenix";
@@ -41,6 +41,32 @@ export class Hearth {
   async join(roomName: string, token: string, opts: JoinOptions = {}): Promise<Room> {
     const socket = this.ensureSocket();
     return Room.join(socket, roomName, token, opts);
+  }
+
+  async messages(
+    room: string,
+    token: string,
+    opts: { after?: number; limit?: number } = {},
+  ): Promise<{ messages: Message[]; nextCursor: number | null }> {
+    const params = new URLSearchParams();
+    if (opts.after !== undefined) params.set("after", String(opts.after));
+    if (opts.limit !== undefined) params.set("limit", String(opts.limit));
+    const qs = params.toString();
+    const path = `/api/rooms/${encodeURIComponent(room)}/messages${qs ? `?${qs}` : ""}`;
+
+    const res = await this.get(path, token);
+    if (res.ok) {
+      const body = await res.json();
+      return { messages: body.messages, nextCursor: body.next_cursor };
+    }
+    throw await this.toError(res);
+  }
+
+  private get(path: string, token: string): Promise<Response> {
+    return fetch(`${this.baseUrl}${path}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
   }
 
   private post(path: string, body: unknown): Promise<Response> {
