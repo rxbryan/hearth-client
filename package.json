@@ -27,7 +27,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/phoenix": "^1.6.7",
-    "eslint": "^10.6.0",
+    "eslint": "^10.8.0",
     "prettier": "^3.9.4",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
