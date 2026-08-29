@@ -22,7 +22,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "phoenix": "^1.8.8"
+    "phoenix": "^1.8.13"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
